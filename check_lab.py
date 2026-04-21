@@ -54,6 +54,24 @@ def validate_lab():
     else:
         print(f"⚠️ CẢNH BÁO: Thiếu Multi-Judge Metrics (agreement_rate).")
 
+        # Check mrr
+        if "mrr" in metrics:
+            print(f"✅ Tìm thấy MRR metric: {metrics['mrr']:.2f}")
+        else:
+            print(f"⚠️ CẢNH BÁO: Thiếu MRR metric (mrr).")
+
+        # Check cost_usd
+        if "cost_usd" in metrics:
+            print(f"✅ Tìm thấy Cost metric: {metrics['cost_usd']:.2f} USD")
+        else:
+            print(f"⚠️ CẢNH BÁO: Thiếu Cost metric (cost_usd).")
+
+        # Check regression section
+        if "regression" in data:
+            print(f"✅ Tìm thấy Regression section trong summary.json")
+        else:
+            print(f"⚠️ CẢNH BÁO: Thiếu Regression section trong summary.json")
+
     if data["metadata"].get("version"):
         print(f"✅ Đã tìm thấy thông tin phiên bản Agent (Regression Mode)")
 
