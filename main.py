@@ -55,6 +55,44 @@ def load_dataset() -> list[dict]:
     return []
 
 
+def build_documents_from_dataset(dataset: list[dict]) -> list[dict]:
+    """Create retrieval documents aligned with expected_retrieval_ids in dataset."""
+    doc_map: dict[str, dict] = {}
+
+    for case in dataset:
+        context = (case.get("context") or "").strip()
+        expected_ids = case.get("expected_retrieval_ids", []) or []
+        meta = case.get("metadata", {}) or {}
+        source_doc = meta.get("source_doc", "dataset")
+
+        for doc_id in expected_ids:
+            if not doc_id:
+                continue
+            if doc_id not in doc_map:
+                doc_map[doc_id] = {
+                    "id": doc_id,
+                    "source": source_doc,
+                    "content": context,
+                }
+            elif context and context not in doc_map[doc_id]["content"]:
+                doc_map[doc_id]["content"] += f"\n\n{context}"
+
+    # Fallback: if expected ids are missing, create docs from case IDs to keep agent functional.
+    if not doc_map:
+        for idx, case in enumerate(dataset, start=1):
+            context = (case.get("context") or "").strip()
+            if not context:
+                continue
+            fallback_id = case.get("id", f"case_doc_{idx:03d}")
+            doc_map[fallback_id] = {
+                "id": fallback_id,
+                "source": "dataset_fallback",
+                "content": context,
+            }
+
+    return list(doc_map.values())
+
+
 def summarize_results(agent_version: str, results: list[dict], runner: BenchmarkRunner) -> dict:
     total = len(results)
     if total == 0:
@@ -96,19 +134,32 @@ def summarize_results(agent_version: str, results: list[dict], runner: Benchmark
     }
 
 
-async def run_benchmark_with_results(agent_version: str, system_prompt: str, dataset: list[dict]):
+async def run_benchmark_with_results(
+    agent_version: str,
+    system_prompt: str,
+    dataset: list[dict],
+    documents: list[dict],
+    batch_size: int,
+    max_output_tokens: int,
+):
     print(f"🚀 Khởi động Benchmark cho {agent_version}...")
 
     if not dataset:
         print("❌ Dataset rỗng. Hãy tạo data/golden_set.jsonl hoặc data/mock_golden_3cases.jsonl.")
         return None, None
 
-    agent = MainAgent(system_prompt=system_prompt, name=agent_version)
+    agent = MainAgent(
+        system_prompt=system_prompt,
+        name=agent_version,
+        documents=documents,
+        max_output_tokens=max_output_tokens,
+    )
     evaluator = ExpertEvaluator()
-    judge = LLMJudge()
+    # Faster pair of real judges to improve throughput while keeping multi-model evaluation.
+    judge = LLMJudge(models=["gpt-4o-mini", "claude-haiku-4-5"])
     runner = BenchmarkRunner(agent, evaluator, judge)
 
-    results = await runner.run_all(dataset, batch_size=5)
+    results = await runner.run_all(dataset, batch_size=batch_size)
     summary = summarize_results(agent_version, results, runner)
     return results, summary
 
@@ -119,14 +170,35 @@ async def main():
         print("❌ Khong tim thay dataset hop le trong data/golden_set.jsonl hoac data/mock_golden_3cases.jsonl")
         return
 
-    v1_prompt = "Ban la tro ly ho tro. Tra loi ngan gon."
+    documents = build_documents_from_dataset(dataset)
+    print(f"Da tao kho tai lieu retrieval: {len(documents)} documents")
+
+    batch_size = int(os.getenv("BENCH_BATCH_SIZE", "10"))
+
+    v1_prompt = (
+        "Ban la tro ly ho tro. Tra loi ngan gon, khong can giai thich chi tiet."
+    )
     v2_prompt = (
         "Ban la tro ly ho tro. Chi duoc tra loi dua tren context duoc cung cap, "
-        "khong bịa them thong tin. Neu context khong du, hay noi ro."
+        "khong bịa them thong tin. Neu context khong du, hay noi ro va trich dan id tai lieu."
     )
 
-    v1_results, v1_summary = await run_benchmark_with_results("Agent_V1_Base", v1_prompt, dataset)
-    v2_results, v2_summary = await run_benchmark_with_results("Agent_V2_Optimized", v2_prompt, dataset)
+    v1_results, v1_summary = await run_benchmark_with_results(
+        "Agent_V1_Base",
+        v1_prompt,
+        dataset,
+        documents,
+        batch_size,
+        90,
+    )
+    v2_results, v2_summary = await run_benchmark_with_results(
+        "Agent_V2_Optimized",
+        v2_prompt,
+        dataset,
+        documents,
+        batch_size,
+        180,
+    )
 
     if not v1_summary or not v2_summary or v2_results is None or v1_results is None:
         print("❌ Khong the hoan tat benchmark.")

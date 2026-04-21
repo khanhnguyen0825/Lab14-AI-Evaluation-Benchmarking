@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import math
 from typing import Dict, List, Tuple
 
 from dotenv import load_dotenv
@@ -18,9 +19,13 @@ class MainAgent:
         model: str = "gpt-4o-mini",
         name: str = "SupportAgent-v1",
         documents: List[Dict] | None = None,
+        max_context_chars: int = 320,
+        max_output_tokens: int = 180,
     ):
         self.name = name
         self.model = model
+        self.max_context_chars = max_context_chars
+        self.max_output_tokens = max_output_tokens
         self.system_prompt = system_prompt or (
             "Ban la tro ly ho tro khach hang. Chi su dung context duoc cung cap. "
             "Neu context khong du, hay noi ro khong du thong tin va khong du doan them."
@@ -29,53 +34,28 @@ class MainAgent:
         api_key = os.getenv("OPENAI_API_KEY")
         self.client = AsyncOpenAI(api_key=api_key) if api_key else None
 
-        self.documents = documents or [
-            {
-                "id": "doc_policy_v2",
-                "source": "policy_handbook.pdf",
-                "content": (
-                    "De doi mat khau: vao Cai dat, chon Bao mat, bam Doi mat khau, "
-                    "xac thuc OTP, sau do nhap mat khau moi va xac nhan."
-                ),
-            },
-            {
-                "id": "doc_faq_section3",
-                "source": "faq.md",
-                "content": (
-                    "Neu quen mat khau, su dung chuc nang Quen mat khau o man hinh dang nhap, "
-                    "kiem tra email va dat lai trong 15 phut."
-                ),
-            },
-            {
-                "id": "doc_security_best_practice",
-                "source": "security_guideline.md",
-                "content": (
-                    "Khong chia se OTP. Mat khau nen dai it nhat 12 ky tu, "
-                    "bao gom chu hoa, chu thuong, so va ky tu dac biet."
-                ),
-            },
-            {
-                "id": "doc_account_lock",
-                "source": "account_policy.md",
-                "content": (
-                    "Tai khoan co the bi khoa tam thoi sau nhieu lan dang nhap sai. "
-                    "Lien he ho tro hoac doi 30 phut truoc khi thu lai."
-                ),
-            },
-        ]
+        self.documents = documents or []
 
     @staticmethod
     def _tokenize(text: str) -> List[str]:
-        return re.findall(r"[a-zA-Z0-9_]+", text.lower())
+        # Unicode-aware tokenizer to preserve Vietnamese words with diacritics.
+        return re.findall(r"\b\w+\b", text.lower(), flags=re.UNICODE)
 
     def _retrieve_top_k(self, question: str, k: int = 3) -> List[Dict]:
+        if not self.documents:
+            return []
+
         q_tokens = set(self._tokenize(question))
-        scored_docs: List[Tuple[int, Dict]] = []
+        scored_docs: List[Tuple[float, Dict]] = []
 
         for doc in self.documents:
             d_tokens = set(self._tokenize(doc["content"]))
             overlap = len(q_tokens.intersection(d_tokens))
-            scored_docs.append((overlap, doc))
+            if not d_tokens:
+                score = 0.0
+            else:
+                score = overlap / math.sqrt(len(d_tokens))
+            scored_docs.append((score, doc))
 
         scored_docs.sort(key=lambda item: item[0], reverse=True)
         top_docs = [doc for _, doc in scored_docs[:k]]
@@ -85,21 +65,31 @@ class MainAgent:
         return top_docs
 
     @staticmethod
-    def _fallback_answer(question: str, contexts: List[str]) -> str:
+    def _fallback_answer(question: str, contexts: List[str], concise_mode: bool) -> str:
         if not contexts:
             return "Khong tim thay context phu hop de tra loi cau hoi nay."
+
+        if concise_mode:
+            return (
+                "Thong tin tim thay: "
+                f"{contexts[0]}"
+            )
+
         return (
-            "Toi da tim thay thong tin lien quan trong tai lieu. "
-            f"Cau hoi: {question}. "
-            f"Tom tat: {contexts[0]}"
+            "Tra loi dua tren context:\n"
+            f"- Cau hoi: {question}\n"
+            f"- Trich dan 1: {contexts[0]}\n"
+            + (f"- Trich dan 2: {contexts[1]}\n" if len(contexts) > 1 else "")
+            + "Neu can them thong tin, vui long kiem tra tai lieu goc."
         )
 
     async def query(self, question: str) -> Dict:
         top_docs = self._retrieve_top_k(question, k=3)
         retrieved_ids = [doc["id"] for doc in top_docs]
-        contexts = [doc["content"] for doc in top_docs]
+        contexts = [doc["content"][: self.max_context_chars] for doc in top_docs]
+        concise_mode = "tra loi ngan gon" in self.system_prompt.lower()
         context_block = "\n\n".join(
-            [f"[{doc['id']}] {doc['content']}" for doc in top_docs]
+            [f"[{doc['id']}] {doc['content'][: self.max_context_chars]}" for doc in top_docs]
         )
 
         prompt = (
@@ -110,7 +100,7 @@ class MainAgent:
             "Answer in Vietnamese and cite document IDs used."
         )
 
-        answer = self._fallback_answer(question, contexts)
+        answer = self._fallback_answer(question, contexts, concise_mode)
         prompt_tokens = 0
         completion_tokens = 0
         total_tokens = 0
@@ -125,6 +115,7 @@ class MainAgent:
                         {"role": "user", "content": prompt},
                     ],
                     temperature=0.1,
+                    max_tokens=self.max_output_tokens,
                 )
                 answer = response.choices[0].message.content or answer
                 usage = response.usage
