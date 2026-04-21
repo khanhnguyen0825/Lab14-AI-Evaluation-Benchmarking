@@ -2,7 +2,7 @@
 
 ## 1. Chi phí/case
 
-- Tổng chi phí (cost_usd): 0.00768 USD
+- Tổng chi phí (cost_usd): 0.007709 USD
 - Tổng số case: 76
 - Chi phí/case: 0.000101 USD
 
