@@ -1,4 +1,4 @@
-# Reflection — Đỗ Trọng Minh (AI Judge Engineer)
+# Reflection — Đỗ Trọng Minh - 2A202600464 (AI Judge Engineer)
 
 ## 1. Tôi đã làm gì trong bài lab này?
 - Chịu trách nhiệm chính xây dựng module `engine/llm_judge.py` đóng vai trò là Giám khảo AI (LLM-as-a-Judge) cho hệ thống Evaluation Factory.
