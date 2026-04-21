@@ -78,4 +78,16 @@ python check_lab.py
 - File `.env` chứa API Key **KHÔNG** được push lên GitHub.
 
 ---
+
+## 👥 Nhóm Thực hiện & Reflections
+
+| Vai trò | Phụ trách | Reflection |
+|---|---|---|
+| **Người 1: Data Engineer** | pham hoai | [Xem tại đây](file:///d:/VinUni/Lab14/Lab14-AI-Evaluation-Benchmarking/analysis/reflections/reflection_pham_hoai.md) |
+| **Người 2: AI Judge** | haphcc | [Xem tại đây](file:///d:/VinUni/Lab14/Lab14-AI-Evaluation-Benchmarking/analysis/reflections/reflection_haphcc.md) |
+| **Người 3: Runner/Agent** | khanhnguyen0825 | [Xem tại đây](file:///d:/VinUni/Lab14/Lab14-AI-Evaluation-Benchmarking/analysis/reflections/reflection_khanhnguyen.md) |
+| **Người 4: DevOps** | Minh2255 | [Xem tại đây](file:///d:/VinUni/Lab14/Lab14-AI-Evaluation-Benchmarking/analysis/reflections/reflection_minh2255.md) |
+| **Người 5: Leader/Analyst** | [Tên của bạn] | [Xem tại đây](file:///d:/VinUni/Lab14/Lab14-AI-Evaluation-Benchmarking/analysis/reflections/reflection_user.md) |
+
+---
 *Chúc nhóm bạn xây dựng được một Evaluation Factory thực sự mạnh mẽ!*
