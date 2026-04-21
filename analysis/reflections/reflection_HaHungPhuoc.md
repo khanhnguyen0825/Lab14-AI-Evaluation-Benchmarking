@@ -1,36 +1,33 @@
 # Reflection (Person 2)
 # Ha Hung Phuoc - 2A202600367
 
-## 1. Tôi đã làm gì trong bài lab này?
-- **Xây dựng hệ thống Multi-Judge Evaluation** trong `engine/llm_judge.py` sử dụng 2 model: GPT-4o-mini (đánh giá nhanh) và Claude Haiku (xác thực lại). Cơ chế này giúp giảm tỷ lệ sai lệch cá nhân của từng model.
-- **Implement Conflict Resolution Logic**: Khi hai Judge có điểm lệch nhau > 1.0, hệ thống tự động gọi model thứ 3 (Tiebreaker) để đạt consensus. Nếu tiebreaker không có hoặc cũng khác, chọn điểm trung bình.
-- **Phát triển module `check_position_bias`** để kiểm tra xem Judge có bị ảnh hưởng bởi vị trí (early/late) của đáp án hay không.
-- **Error Handling & Fallback Mechanism**: Xây dựng cơ chế fallback khi API gặp lỗi (ví dụ: Claude timeout, OpenAI rate limit) để đảm bảo benchmark không bị gián đoạn.
+## 1. Engineering Contribution (15đ)
+- Tôi chịu trách nhiệm chính cho module [engine/llm_judge.py](engine/llm_judge.py), bao gồm thiết kế cơ chế Multi-Judge để chấm điểm bằng 2 model độc lập.
+- Tôi implement Conflict Resolution: khi chênh lệch điểm giữa hai judge lớn hơn ngưỡng, hệ thống gọi tiebreaker để tránh kết luận thiếu ổn định.
+- Tôi phát triển và tích hợp kiểm tra Position Bias để đánh giá mức độ công bằng khi thay đổi thứ tự đáp án.
+- Tôi tối ưu luồng async bằng `asyncio.gather()` để giảm thời gian chờ API và giữ benchmark chạy ổn định trên tập 76 cases.
+- Đóng góp được thể hiện qua các commit cập nhật logic đánh giá, xử lý lỗi API, và chuẩn hóa output JSON trong các file judge/eval liên quan.
 
-## 2. Kỹ thuật tôi học được
-- **Multi-model Evaluation Framework**: Cách thiết kế kiến trúc để kết hợp nhiều LLM khác nhau, không chỉ đơn thuần gọi tuần tự mà phải tối ưu latency với `asyncio.gather()`.
-- **Async Concurrency Patterns**: Gọi GPT-4o-mini + Claude Haiku đồng thời, tập hợp kết quả bằng `asyncio.gather()` để giảm thời gian chờ từ O(n) xuống O(1) (nếu đủ compute resources).
-- **API Error Handling & Resilience**: Xử lý các tình huống API thất bại (timeout, rate limiting, invalid response) mà không làm crash toàn bộ pipeline.
-- **JSON Schema Validation**: Sử dụng Pydantic models để validate response từ các model, giúp detect malformed JSON sớm.
-- **Scoring Consensus Algorithms**: Thiết kế logic để hòa giải khi có conflict giữa 2 scores, quan trọng trong multi-judge scenarios.
+## 2. Technical Depth (15đ)
+- **MRR (Mean Reciprocal Rank)**: đo chất lượng retrieval qua vị trí tài liệu đúng đầu tiên. Tài liệu đúng xuất hiện càng sớm thì điểm càng cao.
+- **Cohen's Kappa**: đo mức đồng thuận giữa các judge sau khi loại trừ phần đồng thuận ngẫu nhiên, phù hợp để đánh giá độ tin cậy của Multi-Judge.
+- **Position Bias**: hiện tượng điểm số thay đổi do vị trí câu trả lời (đầu/cuối) thay vì chất lượng thực. Tôi dùng module kiểm tra bias để phát hiện và giảm rủi ro này.
+- **Trade-off Chi phí vs Chất lượng**:
+  - Dùng model nhẹ hơn giúp giảm cost và latency nhưng có thể giảm độ ổn định của đánh giá.
+  - Dùng Multi-Judge + tiebreaker tăng chất lượng và độ tin cậy, nhưng tốn thêm token và thời gian.
+  - Giải pháp tôi chọn là chỉ gọi tiebreaker khi cần (disagreement cao) để cân bằng hiệu năng và chi phí.
 
-## 3. Khó khăn gặp phải và cách giải quyết
-- **Khó khăn 1 - Inconsistent API Responses**: Các model trả về format JSON khác nhau (Claude quên trả về score field, GPT-4o trả về string thay vì int), gây lỗi khi parsing.
-  - **Giải quyết**: Thêm validation layer bằng Pydantic model với type hints rõ ràng, sử dụng `.parse_obj()` để auto-cast, và thêm detailed error messages.
-  
-- **Khó khăn 2 - Low Agreement Rate (19.1%)**: Sau khi chạy full benchmark 76 cases, agreement_rate chỉ 19.1% (Claude trả về score 3 cho tất cả cases do API error).
-  - **Giải quyết**: Debug bằng cách in reasoning string từ cả 2 judges, phát hiện Claude bị error "Error calling Anthropic API". Xác minh lại Claude API key, thấy rằng errors chỉ là do connection issue tạm thời. Sau khi refresh key, agreement rate tăng lên 77.63%.
-  
-- **Khó khăn 3 - Latency Budget**: Chạy 2 judges cho 76 cases có thể vượt quá 2 phút budget nếu gọi sequential.
-  - **Giải quyết**: Sử dụng `asyncio.gather()` để gọi đồng thời, kết hợp với batch processing (batch_size=10) để tối ưu throughput mà không vượt rate limit.
+## 3. Problem Solving (10đ)
+- **Vấn đề 1: API trả dữ liệu không đồng nhất**
+  - Triệu chứng: JSON thiếu field hoặc sai kiểu dữ liệu, gây lỗi parse.
+  - Cách xử lý: thêm lớp validate schema, ép kiểu an toàn, và fallback giá trị mặc định để pipeline không dừng.
+- **Vấn đề 2: Agreement rate thấp bất thường**
+  - Triệu chứng: chênh lệch điểm lớn trên nhiều case do một judge gặp lỗi kết nối/API.
+  - Cách xử lý: bổ sung logging reasoning/response theo từng judge, khoanh vùng nguyên nhân, sau đó điều chỉnh cấu hình và cơ chế fallback.
+- **Vấn đề 3: Nguy cơ vượt thời gian benchmark**
+  - Triệu chứng: chạy tuần tự 2 judge làm tăng latency toàn hệ thống.
+  - Cách xử lý: chuyển sang gọi song song async theo batch, giảm đáng kể tổng thời gian chạy mà vẫn giữ chất lượng.
 
-- **Khó khăn 4 - Conflict Resolution Edge Cases**: Khi 2 judges hoàn toàn không đồng ý (VD: score 5 vs 2), cần quyết định việc fallback như thế nào.
-  - **Giải quyết**: Implement tiebreaker logic: nếu |score_a - score_b| > 1.0, gọi model thứ 3; nếu không, chọn trung bình. Thêm logging để track bao nhiêu cases cần tiebreaker.
-
-## 4. Nếu làm lại, tôi sẽ thay đổi gì?
-- **Sử dụng structured outputs (JSON mode) từ đầu**: Thay vì dựa vào model tự trả về JSON, sử dụng OpenAI's `json_schema` parameter hoặc Claude's `raw_response` mode để đảm bảo format luôn nhất quán.
-- **Thêm mais detailed rubrics**: Thay vì chỉ cho điểm 1-5 tổng quát, chia thành các tiêu chí: (1) Tính chính xác, (2) Tính đầy đủ, (3) Tính liên quan, (4) Tính rõ ràng. Mỗi tiêu chí 1-5 điểm, sau đó trung bình.
-- **Implement timeout mechanism**: Thêm timeout cho từng API call (VD: 10 giây) để tránh hanging khi model slow.
-- **Better logging & monitoring**: Log toàn bộ request/response (không chỉ summary) vào file để dễ debug issues như Claude API errors.
-- **Diversify judge models**: Thay vì chỉ dùng GPT-4o + Claude, thêm LLaMA hoặc Gemini để có broader perspective, nhất là với Vietnamese content.
-- **A/B test different conflict resolution strategies**: Implement multiple strategies (average, weighted, voting, max-disagreement-rejection) và compare metrics để chọn optimal approach.
+## 4. Tự đánh giá và hướng cải thiện
+- Tôi hoàn thành đúng phần việc kỹ thuật cốt lõi của Person 2: thiết kế judge pipeline, xử lý conflict, và kiểm soát bias.
+- Nếu làm lại, tôi sẽ bổ sung thêm rubric chi tiết theo từng tiêu chí con (độ chính xác, độ đầy đủ, tính liên quan, tính rõ ràng) để tăng tính giải thích của điểm số.
