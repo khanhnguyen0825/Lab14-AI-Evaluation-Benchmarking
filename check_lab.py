@@ -1,8 +1,14 @@
 import json
 import os
+import sys
+
+# Ensure output is UTF-8 to handle any remaining special characters
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def validate_lab():
-    print("🔍 Đang kiểm tra định dạng bài nộp...")
+    print("[INFO] Dang kiem tra dinh dang bai nop...")
 
     required_files = [
         "reports/summary.json",
@@ -14,13 +20,13 @@ def validate_lab():
     missing = []
     for f in required_files:
         if os.path.exists(f):
-            print(f"✅ Tìm thấy: {f}")
+            print(f"[OK] Tim thay: {f}")
         else:
-            print(f"❌ Thiếu file: {f}")
+            print(f"[FAIL] Thieu file: {f}")
             missing.append(f)
 
     if missing:
-        print(f"\n❌ Thiếu {len(missing)} file. Hãy bổ sung trước khi nộp bài.")
+        print(f"\n[FAIL] Thieu {len(missing)} file. Hay bo sung truoc khi nop bai.")
         return
 
     # 2. Kiểm tra nội dung summary.json
@@ -28,54 +34,54 @@ def validate_lab():
         with open("reports/summary.json", "r", encoding="utf-8") as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        print(f"❌ File reports/summary.json không phải JSON hợp lệ: {e}")
+        print(f"[FAIL] File reports/summary.json khong phai JSON hop le: {e}")
         return
 
     if "metrics" not in data or "metadata" not in data:
-        print("❌ File summary.json thiếu trường 'metrics' hoặc 'metadata'.")
+        print("[FAIL] File summary.json thieu truong 'metrics' hoac 'metadata'.")
         return
 
     metrics = data["metrics"]
 
-    print(f"\n--- Thống kê nhanh ---")
-    print(f"Tổng số cases: {data['metadata'].get('total', 'N/A')}")
-    print(f"Điểm trung bình: {metrics.get('avg_score', 0):.2f}")
+    print(f"\n--- Thong ke nhanh ---")
+    print(f"Tong so cases: {data['metadata'].get('total', 'N/A')}")
+    print(f"Diem trung binh: {metrics.get('avg_score', 0):.2f}")
 
     # EXPERT CHECKS
-    has_retrieval = "hit_rate" in metrics
-    if has_retrieval:
-        print(f"✅ Đã tìm thấy Retrieval Metrics (Hit Rate: {metrics['hit_rate']*100:.1f}%)")
+    # Check retrieval
+    if "hit_rate" in metrics:
+        print(f"[OK] Da tim thay Retrieval Metrics (Hit Rate: {metrics['hit_rate']*100:.1f}%)")
     else:
-        print(f"⚠️ CẢNH BÁO: Thiếu Retrieval Metrics (hit_rate).")
+        print(f"[WARN] CẢNH BÁO: Thieu Retrieval Metrics (hit_rate).")
 
-    has_multi_judge = "agreement_rate" in metrics
-    if has_multi_judge:
-        print(f"✅ Đã tìm thấy Multi-Judge Metrics (Agreement Rate: {metrics['agreement_rate']*100:.1f}%)")
+    # Check multi-judge
+    if "agreement_rate" in metrics:
+        print(f"[OK] Da tim thay Multi-Judge Metrics (Agreement Rate: {metrics['agreement_rate']*100:.1f}%)")
     else:
-        print(f"⚠️ CẢNH BÁO: Thiếu Multi-Judge Metrics (agreement_rate).")
+        print(f"[WARN] CẢNH BÁO: Thieu Multi-Judge Metrics (agreement_rate).")
 
-        # Check mrr
-        if "mrr" in metrics:
-            print(f"✅ Tìm thấy MRR metric: {metrics['mrr']:.2f}")
-        else:
-            print(f"⚠️ CẢNH BÁO: Thiếu MRR metric (mrr).")
+    # Check mrr
+    if "mrr" in metrics:
+        print(f"[OK] Tim thay MRR metric: {metrics['mrr']:.2f}")
+    else:
+        print(f"[WARN] CẢNH BÁO: Thieu MRR metric (mrr).")
 
-        # Check cost_usd
-        if "cost_usd" in metrics:
-            print(f"✅ Tìm thấy Cost metric: {metrics['cost_usd']:.2f} USD")
-        else:
-            print(f"⚠️ CẢNH BÁO: Thiếu Cost metric (cost_usd).")
+    # Check cost_usd
+    if "cost_usd" in metrics:
+        print(f"[OK] Tim thay Cost metric: {metrics['cost_usd']:.4f} USD")
+    else:
+        print(f"[WARN] CẢNH BÁO: Thieu Cost metric (cost_usd).")
 
-        # Check regression section
-        if "regression" in data:
-            print(f"✅ Tìm thấy Regression section trong summary.json")
-        else:
-            print(f"⚠️ CẢNH BÁO: Thiếu Regression section trong summary.json")
+    # Check regression section
+    if "regression" in data:
+        print(f"[OK] Tim thay Regression section trong summary.json")
+    else:
+        print(f"[WARN] CẢNH BÁO: Thieu Regression section trong summary.json")
 
     if data["metadata"].get("version"):
-        print(f"✅ Đã tìm thấy thông tin phiên bản Agent (Regression Mode)")
+        print(f"[OK] Da tim thay thong tin phien ban Agent (Regression Mode)")
 
-    print("\n🚀 Bài lab đã sẵn sàng để chấm điểm!")
+    print("\n[SUCCESS] Bai lab da san sang de cham diem!")
 
 if __name__ == "__main__":
     validate_lab()
