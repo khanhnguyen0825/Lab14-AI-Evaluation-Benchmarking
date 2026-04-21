@@ -1,0 +1,31 @@
+{
+  "decision": "ROLLBACK",
+  "checks": {
+    "quality": {
+      "pass": true,
+      "value": 4.3224,
+      "threshold": 3.5
+    },
+    "hit_rate": {
+      "pass": true,
+      "value": 0.8684,
+      "threshold": 0.75
+    },
+    "agreement_rate": {
+      "pass": false,
+      "value": 0.1908,
+      "threshold": 0.7
+    },
+    "cost_usd": {
+      "pass": true,
+      "value": 0.00768,
+      "threshold": 1.0
+    },
+    "delta": {
+      "pass": true,
+      "value": 0.2435,
+      "threshold": 0.0
+    }
+  },
+  "timestamp": "2026-04-21 15:35:04"
+}

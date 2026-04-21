@@ -2,13 +2,13 @@
 
 ## 1. Chi phí/case
 
-- Tổng chi phí (cost_usd): 0.45 USD
-- Tổng số case: 50
-- Chi phí/case: 0.009 USD
+- Tổng chi phí (cost_usd): 0.00768 USD
+- Tổng số case: 76
+- Chi phí/case: 0.000101 USD
 
 ## 2. Chi phí cho 1000 cases
 
-- 0.009 USD x 1000 = 9 USD
+- 0.000101 USD x 1000 = 0.101 USD
 
 ## 3. Đề xuất tối ưu chi phí ≥30%
 
@@ -20,4 +20,4 @@
 
 ---
 
-*Báo cáo này dựa trên dữ liệu mock (reports/mock_summary.json). Khi có số liệu thật, cần cập nhật lại các phép tính.*
+*Báo cáo này dựa trên dữ liệu thật (reports/summary.json). Khi có số liệu mới, cần cập nhật lại các phép tính.*
