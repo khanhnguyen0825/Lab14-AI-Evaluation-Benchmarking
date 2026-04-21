@@ -12,9 +12,10 @@ load_dotenv()
 class LLMJudge:
     def __init__(self, models: list = None):
         if models is None:
-            models = ["gpt-4o", "claude-3-haiku-20240307"]
-        self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", "dummy_key_if_not_found"))
-        self.anthropic_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY", "dummy_key_if_not_found"))
+            models = ["gpt-4o", "claude-haiku-4-5"]
+        # Use None as default to let the library handle missing keys properly
+        self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.anthropic_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self.models = models
         
         self.rubrics = {
@@ -54,7 +55,7 @@ Hãy trả về CHỈ MỘT chuỗi JSON với cấu trúc sau, không có markd
         except Exception as e:
             return {"score": 3, "reasoning": f"Error calling OpenAI {model}: {str(e)}"}
 
-    async def _call_anthropic(self, prompt: str, model="claude-3-haiku-20240307") -> Dict:
+    async def _call_anthropic(self, prompt: str, model="claude-haiku-4-5") -> Dict:
         try:
             response = await self.anthropic_client.messages.create(
                 model=model,
@@ -79,9 +80,12 @@ Hãy trả về CHỈ MỘT chuỗi JSON với cấu trúc sau, không có markd
         if "gpt-4o" in self.models:
             tasks.append(self._call_openai(prompt, model="gpt-4o"))
             model_names.append("gpt-4o")
-        if "claude-3-haiku-20240307" in self.models:
-            tasks.append(self._call_anthropic(prompt, model="claude-3-haiku-20240307"))
-            model_names.append("claude")
+        if "gpt-4o-mini" in self.models:
+            tasks.append(self._call_openai(prompt, model="gpt-4o-mini"))
+            model_names.append("gpt-4o-mini")
+        if "claude-haiku-4-5" in self.models:
+            tasks.append(self._call_anthropic(prompt, model="claude-haiku-4-5"))
+            model_names.append("claude-haiku-4-5")
             
         results = await asyncio.gather(*tasks)
         
@@ -145,14 +149,21 @@ Hãy trả về CHỈ MỘT chuỗi JSON với cấu trúc sau, không có markd
         }
 
 if __name__ == "__main__":
+    import sys
+    
+    # Fix Windows console encoding for Vietnamese characters
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     async def main():
         judge = LLMJudge()
         question = "Làm thế nào đặt lại mật khẩu?"
         answer = "Vào Settings rồi bấm Reset Password."
         ground_truth = "Vào Cài đặt → Bảo mật → Đổi mật khẩu."
         
-        print("Testing evaluate_multi_judge...")
+        print("[TEST] Bat dau evaluate_multi_judge...")
         res = await judge.evaluate_multi_judge(question, answer, ground_truth)
+        print("\n[RESULT] Ket qua cham diem:")
         print(json.dumps(res, indent=2, ensure_ascii=False))
         
     asyncio.run(main())
