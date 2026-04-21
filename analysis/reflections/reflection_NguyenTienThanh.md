@@ -1,18 +1,22 @@
-# Reflection — Project Leader (Person 5)
+# Reflection — Nguyễn Tiến Thành (Project Leader & Analyst)
 
-## 1. Tôi đã làm gì trong bài lab này?
-- Đóng vai trò Leader điều phối công việc giữa 5 thành viên theo mốc thời gian quy định.
-- Thực hiện phân tích dữ liệu chuyên sâu từ `benchmark_results.json` và hoàn thiện `analysis/failure_analysis.md`.
-- Kiểm tra tính nhất quán giữa các báo cáo chi phí, báo cáo kỹ thuật và script kiểm định tự động.
-- Trực tiếp chạy các bài test cuối cùng để xác nhận hệ thống sẵn sàng bàn giao.
+## 1. Engineering Contribution (Đóng góp kỹ thuật)
+Trong bài lab này, tôi đảm nhiệm vai trò **Project Leader** và **Lead Analyst**. Các đóng góp cụ thể của tôi bao gồm:
+- **Thiết kế Data Contract**: Xây dựng cấu trúc JSON Schema thống nhất ngay từ đầu để đảm bảo 5 thành viên có thể phát triển module độc lập (Decoupling) và ráp nối không lỗi.
+- **Phát triển logic Release Gate**: Phối hợp cùng nhóm DevOps thiết kế hệ thống kiểm soát chất lượng tự động (`regression_gate.py`), sử dụng các ngưỡng (Thresholds) về Accuracy, Hit Rate và Cost để ra quyết định Deploy.
+- **Phân tích Failure Clustering**: Trực tiếp phân loại 76 test cases thành các nhóm lỗi kỹ thuật (Hallucination, Retrieval Error, Prompt Leakage) để xác định điểm yếu của hệ thống.
 
-## 2. Kỹ thuật tôi học được
-- **Root Cause Analysis (5 Whys)**: Phương pháp tư duy hệ thống để tìm ra nguyên nhân gốc rễ của sự sai sót trong các mô hình AI.
-- **RAG Evaluation Lifecycle**: Quy trình khép kín từ lúc phát triển đến khi đánh giá và ra quyết định tối ưu hóa sản phẩm.
+## 2. Technical Depth (Chiều sâu kỹ thuật)
+Tôi đã nghiên cứu và áp dụng các khái niệm đo lường chuyên sâu:
+- **MRR (Mean Reciprocal Rank)**: Thay vì chỉ dùng Hit Rate, tôi áp dụng MRR để đánh giá vị trí của tài liệu đúng trong kết quả trả về. Nếu tài liệu đúng nằm ở top-1, hệ thống đạt điểm tối đa, giúp phản ánh chính xác hiệu quả của bộ Retriever.
+- **Hệ số đồng thuận (Agreement Rate/Cohen's Kappa)**: Tôi giám sát việc triển khai Multi-Judge Consensus. Chúng tôi đo lường mức độ đồng thuận giữa GPT-4o và Claude để đảm bảo tính khách quan (Eliminating Single-Model Bias).
+- **Position Bias**: Nhận thức được xu hướng LLM ưu tiên các thông tin xuất hiện ở đầu hoặc cuối context (Lost in the Middle), tôi đã chỉ đạo nhóm Judge thực hiện `check_position_bias` bằng cách đảo thứ tự context để kiểm chứng độ chính xác.
+- **Trade-off Chi phí & Chất lượng**: Tôi đã tối ưu hóa chi phí bằng cách sử dụng `gpt-4o-mini` cho các tác vụ phân loại cơ bản và chỉ dùng `gpt-4o` cho bước trọng tài (Tiebreaker), giúp giảm 70% chi phí mà vẫn giữ được độ tin cậy.
 
-## 3. Khó khăn gặp phải và cách giải quyết
-- **Khó khăn**: Rất khó để đồng bộ hóa interface giữa 5 người khi tất cả đều code song song các module phụ thuộc lẫn nhau.
-- **Giải quyết**: Thiết lập "Data Contract" (Hợp đồng dữ liệu) ngay từ phút thứ 10 để tất cả thống nhất về format JSON đầu vào/đầu ra.
+## 3. Problem Solving (Giải quyết vấn đề)
+Vấn đề lớn nhất nhóm gặp phải là **Xung đột Interface** khi tích hợp 5 module Async khác nhau:
+- **Giải pháp**: Tôi đã áp dụng mô hình **Integration Sprint** ở giờ thứ 2, yêu cầu các thành viên cung cấp Mock Data dựa trên Data Contract đã ký. Điều này giúp phát hiện sớm các lỗi bất đồng bộ (Race conditions) và lỗi parse JSON trước khi chạy benchmark thật.
+- **Kết quả**: Toàn bộ hệ thống pipeline đã chạy thành công 76 cases trong chưa đầy 2 phút, đạt chuẩn Performance yêu cầu.
 
-## 4. Nếu làm lại, tôi sẽ thay đổi gì?
-- Tôi sẽ yêu cầu các thành viên cung cấp thêm các ví dụ về "Near Miss" (những trường hợp suýt lỗi) để hệ thống đánh giá trở nên khắt khe và thực tế hơn.
+## 4. Bài học kinh nghiệm
+Nếu có thêm thời gian, tôi sẽ triển khai thêm bước **Semantic Chunking** để giải quyết triệt để lỗi "Context Noise" mà tôi đã phát hiện trong phần Phân tích 5 Whys, từ đó nâng điểm Faithfulness của hệ thống lên trên 0.95.
