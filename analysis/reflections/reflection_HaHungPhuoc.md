@@ -1,4 +1,4 @@
-# Reflection (Person 2)
+# Reflection 
 # Ha Hung Phuoc - 2A202600367
 
 ## 1. Engineering Contribution (15đ)
